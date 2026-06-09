@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ORMOND × Thera — Instagram Feed Simulator</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0a;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    min-height: 100vh;
+    color: #fff;
+  }
+
+  /* ─── HEADER ───────────────────────────────────────────── */
+  .header {
+    text-align: center;
+    padding: 48px 24px 32px;
+    border-bottom: 1px solid #1a1a1a;
+  }
+  .header .brand { font-size: 11px; letter-spacing: 8px; color: #666; text-transform: uppercase; margin-bottom: 6px; }
+  .header h1 { font-size: 28px; font-weight: 200; letter-spacing: 2px; color: #f0ede8; }
+  .header .sub { font-size: 11px; letter-spacing: 4px; color: #444; text-transform: uppercase; margin-top: 8px; }
+
+  /* ─── PHONE FRAME ──────────────────────────────────────── */
+  .phone-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+  .phone {
+    width: 390px;
+    background: #000;
+    border-radius: 48px;
+    border: 2px solid #2a2a2a;
+    overflow: hidden;
+    box-shadow: 0 40px 120px rgba(0,0,0,.8), 0 0 0 1px #111;
+    position: relative;
+  }
+
+  /* notch */
+  .notch {
+    width: 126px; height: 34px;
+    background: #000;
+    border-radius: 0 0 20px 20px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 10;
+  }
+
+  /* ─── INSTAGRAM UI ─────────────────────────────────────── */
+  .ig-screen {
+    background: #000;
+    min-height: 700px;
+  }
+
+  .ig-top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px 12px;
+    border-bottom: 1px solid #1a1a1a;
+  }
+  .ig-top-bar .username { font-size: 16px; font-weight: 700; color: #fff; letter-spacing: 0.5px; }
+  .ig-top-bar .icons { display: flex; gap: 18px; }
+  .ig-top-bar .icons svg { width: 22px; height: 22px; fill: #fff; }
+
+  /* Profile */
+  .ig-profile {
+    padding: 14px 16px 10px;
+    display: flex;
+    gap: 24px;
+    align-items: center;
+  }
+  .ig-avatar {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #c8a96e, #8b5e3c);
+    border: 2px solid #333;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; letter-spacing: 3px; color: #f0ede8; font-weight: 600;
+    flex-shrink: 0;
+  }
+  .ig-stats { display: flex; gap: 20px; }
+  .ig-stat { text-align: center; }
+  .ig-stat .n { font-size: 16px; font-weight: 700; color: #fff; }
+  .ig-stat .l { font-size: 11px; color: #888; }
+  .ig-bio { padding: 0 16px 10px; }
+  .ig-bio .name { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+  .ig-bio .desc { font-size: 12px; color: #aaa; line-height: 1.5; }
+
+  .ig-follow-btn {
+    margin: 0 16px 12px;
+    background: #c8a96e;
+    border: none;
+    border-radius: 8px;
+    color: #000;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 7px;
+    width: calc(100% - 32px);
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* ─── GRID ─────────────────────────────────────────────── */
+  .ig-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+  }
+
+  .grid-cell {
+    position: relative;
+    aspect-ratio: 1;
+    overflow: hidden;
+    cursor: pointer;
+    background: #111;
+  }
+  .grid-cell img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transition: transform .4s ease;
+    display: block;
+  }
+  .grid-cell:hover img { transform: scale(1.05); }
+
+  .grid-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,.65) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity .3s;
+    display: flex; align-items: flex-end; justify-content: space-between;
+    padding: 8px;
+  }
+  .grid-cell:hover .grid-overlay { opacity: 1; }
+  .grid-label {
+    font-size: 9px; letter-spacing: 2px; color: #f0ede8;
+    text-transform: uppercase; line-height: 1.3; max-width: 80%;
+  }
+  .carousel-badge {
+    background: rgba(255,255,255,.15);
+    backdrop-filter: blur(4px);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 9px;
+    color: #fff;
+    white-space: nowrap;
+    display: flex; align-items: center; gap: 3px;
+    flex-shrink: 0;
+  }
+  .carousel-badge::before { content: '⧉'; font-size: 10px; }
+
+  /* ─── MODAL / LIGHTBOX ─────────────────────────────────── */
+  .modal {
+    display: none;
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,.92);
+    backdrop-filter: blur(12px);
+    align-items: center; justify-content: center;
+  }
+  .modal.open { display: flex; }
+
+  .modal-inner {
+    width: min(420px, 96vw);
+    background: #000;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid #1e1e1e;
+    box-shadow: 0 30px 80px rgba(0,0,0,.8);
+    position: relative;
+  }
+
+  /* modal top */
+  .modal-header {
+    padding: 12px 16px;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid #1a1a1a;
+  }
+  .modal-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, #c8a96e, #8b5e3c);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 7px; letter-spacing: 2px; color: #f0ede8; font-weight: 700;
+  }
+  .modal-username { font-size: 13px; font-weight: 700; color: #fff; flex: 1; }
+  .modal-close {
+    background: none; border: none; color: #888;
+    font-size: 22px; cursor: pointer; line-height: 1; padding: 4px;
+  }
+  .modal-close:hover { color: #fff; }
+
+  /* slide area */
+  .slide-wrap {
+    position: relative;
+    aspect-ratio: 4/5;
+    background: #0a0a0a;
+    overflow: hidden;
+  }
+  .slide-wrap img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity .35s ease;
+  }
+  .slide-wrap img.active { opacity: 1; }
+
+  /* slide theme overlay */
+  .slide-theme {
+    position: absolute; top: 14px; left: 14px; right: 14px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    z-index: 5; pointer-events: none;
+  }
+  .slide-tag {
+    background: rgba(0,0,0,.5);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 9px; letter-spacing: 3px;
+    color: #f0ede8; text-transform: uppercase;
+  }
+  .slide-counter {
+    background: rgba(0,0,0,.5);
+    backdrop-filter: blur(8px);
+    border-radius: 20px;
+    padding: 5px 10px;
+    font-size: 10px; color: #ccc;
+  }
+
+  /* dots */
+  .dots {
+    position: absolute; bottom: 10px; left: 0; right: 0;
+    display: flex; justify-content: center; gap: 4px; z-index: 5;
+  }
+  .dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: rgba(255,255,255,.3);
+    transition: all .2s;
+  }
+  .dot.active { background: #fff; width: 14px; border-radius: 3px; }
+
+  /* arrows */
+  .arrow {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    background: rgba(0,0,0,.5); backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 50%; width: 34px; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: #fff; font-size: 14px; z-index: 10;
+    transition: background .2s;
+    user-select: none;
+  }
+  .arrow:hover { background: rgba(255,255,255,.15); }
+  .arrow.left { left: 10px; }
+  .arrow.right { right: 10px; }
+  .arrow.hidden { opacity: 0; pointer-events: none; }
+
+  /* caption */
+  .modal-caption {
+    padding: 14px 16px;
+    border-top: 1px solid #1a1a1a;
+  }
+  .modal-actions {
+    display: flex; gap: 14px; margin-bottom: 10px;
+    align-items: center;
+  }
+  .modal-actions svg { width: 24px; height: 24px; fill: #fff; cursor: pointer; }
+  .modal-actions svg:hover { fill: #c8a96e; }
+  .modal-caption .caption-text {
+    font-size: 12px; color: #ccc; line-height: 1.6;
+  }
+  .modal-caption .caption-text strong { color: #fff; margin-right: 6px; }
+  .caption-tags { font-size: 11px; color: #5b8def; margin-top: 6px; }
+
+  /* ─── LEGEND ───────────────────────────────────────────── */
+  .legend {
+    max-width: 860px; margin: 0 auto;
+    padding: 40px 24px 60px;
+  }
+  .legend h2 {
+    font-size: 11px; letter-spacing: 6px; color: #444;
+    text-transform: uppercase; text-align: center; margin-bottom: 32px;
+  }
+  .legend-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+  }
+  .legend-item {
+    background: #111;
+    border: 1px solid #1e1e1e;
+    border-radius: 10px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .legend-item:hover { border-color: #c8a96e; background: #151510; }
+  .legend-item .n {
+    font-size: 9px; letter-spacing: 3px; color: #666;
+    text-transform: uppercase; margin-bottom: 4px;
+  }
+  .legend-item .title {
+    font-size: 14px; font-weight: 300; color: #f0ede8; margin-bottom: 6px;
+  }
+  .legend-item .photos {
+    font-size: 10px; color: #555; line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="brand">ORMOND Produção de Imagens</div>
+  <h1>Fazenda Bom Retiro × Thera Vinícola</h1>
+  <div class="sub">Simulador · 9 Carrosséis · Instagram</div>
+</div>
+
+<!-- PHONE -->
+<div class="phone-wrap">
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="ig-screen">
+
+      <!-- Top bar -->
+      <div class="ig-top-bar">
+        <div class="username">ormond</div>
+        <div class="icons">
+          <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+        </div>
+      </div>
+
+      <!-- Profile -->
+      <div class="ig-profile">
+        <div class="ig-avatar">ORMOND</div>
+        <div class="ig-stats">
+          <div class="ig-stat"><div class="n">66</div><div class="l">fotos</div></div>
+          <div class="ig-stat"><div class="n">9</div><div class="l">posts</div></div>
+          <div class="ig-stat"><div class="n">3 dias</div><div class="l">produção</div></div>
+        </div>
+      </div>
+      <div class="ig-bio">
+        <div class="name">ORMOND Produção de Imagens</div>
+        <div class="desc">Fotografia publicitária de alto padrão<br>📍 Fazenda Bom Retiro × Thera Vinícola<br>Serra Catarinense · 2026</div>
+      </div>
+      <button class="ig-follow-btn">ormondimagens.com.br</button>
+
+      <!-- GRID 3×3 -->
+      <div class="ig-grid" id="grid"></div>
+
+    </div><!-- ig-screen -->
+  </div><!-- phone -->
+</div><!-- phone-wrap -->
+
+<!-- LEGEND -->
+<div class="legend">
+  <h2>Composição dos 9 Carrosséis</h2>
+  <div class="legend-grid" id="legend"></div>
+</div>
+
+<!-- MODAL -->
+<div class="modal" id="modal">
+  <div class="modal-inner">
+    <div class="modal-header">
+      <div class="modal-avatar">OR</div>
+      <div class="modal-username">ormond</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="slide-wrap" id="slideWrap">
+      <!-- images injected by JS -->
+      <div class="slide-theme">
+        <div class="slide-tag" id="slideTag"></div>
+        <div class="slide-counter" id="slideCounter"></div>
+      </div>
+      <div class="dots" id="dots"></div>
+      <div class="arrow left" id="arrowLeft" onclick="prevSlide()">‹</div>
+      <div class="arrow right" id="arrowRight" onclick="nextSlide()">›</div>
+    </div>
+    <div class="modal-caption">
+      <div class="modal-actions">
+        <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/></svg>
+        <svg viewBox="0 0 24 24" style="margin-left:auto"><path d="M5 15H3v4c0 1.1.9 2 2 2h4v-2H5v-4zM5 5h4V3H5C3.9 3 3 3.9 3 5v4h2V5zm14-2h-4v2h4v4h2V5c0-1.1-.9-2-2-2zm0 16h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4z"/></svg>
+      </div>
+      <div class="caption-text" id="captionText"></div>
+      <div class="caption-tags" id="captionTags"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CARROSSEIS = [
+  {
+    id: 1,
+    theme: "Do Alto",
+    subtitle: "Vista Aérea · Drone",
+    caption: "Uma propriedade que só faz sentido vista de cima. Araucárias, vinheiras, piscina espelho e o horizonte da Serra Catarinense.",
+    tags: "#drone #aéreo #serracatarinense #fazenda #theraminicola #ormondimagens",
+    cover: "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/DJI_0835.jpg",
+    slides: [
+      "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/DJI_0835.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/DJI_0002.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/DJI_0008.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/DJI_0014.jpg",
+      "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/DJI_0864.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/DJI_0871.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/DJI_0899.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/DJI_0913.jpg",
+      "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/DJI_0930.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/DJI_0965.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/DJI_0998.jpg"
+    ]
+  },
+  {
+    id: 2,
+    theme: "A Família",
+    subtitle: "Momentos Reais",
+    caption: "Não há direção que substitua a cumplicidade genuína. Pai, mãe, filho — vivendo três dias dentro do projeto.",
+    tags: "#familia #lifestyle #real #fazendabomretiro #theraminicola",
+    cover: "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A1442.jpg",
+    slides: [
+      "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A1442.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A1890.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A3159.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A1474.jpg",
+      "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A1495.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A1612.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A1744.jpg"
+    ]
+  },
+  {
+    id: 3,
+    theme: "Arquitetura",
+    subtitle: "Madeira · Pedra · Vidro",
+    caption: "Cada volume pensado para que o horizonte seja sempre o protagonista. Geometria em diálogo com a paisagem da Serra.",
+    tags: "#arquitetura #design #madeira #luxo #serracatarinense #ormondimagens",
+    cover: "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A3932.jpg",
+    slides: [
+      "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A3932.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A3698.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A3939.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A3943.jpg",
+      "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A3944.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A3948.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A3986.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A3904.jpg"
+    ]
+  },
+  {
+    id: 4,
+    theme: "Bem-estar",
+    subtitle: "Piscina · Silêncio · Luz",
+    caption: "Yoga ao amanhecer, com a piscina ainda espelhada. Esse é o tipo de momento que três dias de produção permitem: tempo para esperar a luz certa.",
+    tags: "#wellness #yoga #piscina #bemestar #lifestyle #luxo",
+    cover: "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A1276.jpg",
+    slides: [
+      "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A1276.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A2710.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A2877.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A1143.jpg",
+      "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A1301.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A1313.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A1382.jpg"
+    ]
+  },
+  {
+    id: 5,
+    theme: "Vinícola Thera",
+    subtitle: "Vinho · Sabor · Experiência",
+    caption: "Vinícola premiada, gastronomia de alto nível e um restaurante com vista para as montanhas. O vinho como parte da paisagem.",
+    tags: "#vinho #vinicola #thera #gastronomia #enoturismo #serracatarinense",
+    cover: "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A2005.jpg",
+    slides: [
+      "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A2005.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A2186.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A2114.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A2203.jpg",
+      "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A2293.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A3018.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A3024.jpg"
+    ]
+  },
+  {
+    id: 6,
+    theme: "Cavalos & Fazenda",
+    subtitle: "Campo · Equinos · Liberdade",
+    caption: "O campo como extensão do projeto. Cavalos, araucárias e o ritmo diferente do tempo na fazenda.",
+    tags: "#cavalos #fazenda #campo #rural #natureza #serracatarinense",
+    cover: "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A2910.jpg",
+    slides: [
+      "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A2910.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A3011.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A3059.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A3076.jpg",
+      "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A3117.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A3263.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A4434.jpg"
+    ]
+  },
+  {
+    id: 7,
+    theme: "Natureza & Aventura",
+    subtitle: "Jeep · Rio · Mata Atlântica",
+    caption: "A passagem do Jeep pelo rio — acessos exclusivos dentro da propriedade. Rios de pedra, neblina e araucárias centenárias.",
+    tags: "#natureza #aventura #jeep #mataatlantica #araucaria #rio",
+    cover: "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A4292.jpg",
+    slides: [
+      "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A4292.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A4090.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A4113.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A4124.jpg",
+      "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A2566.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A2652.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A2798.jpg"
+    ]
+  },
+  {
+    id: 8,
+    theme: "Olhares & Estilo",
+    subtitle: "Lifestyle · Feminino · Elegância",
+    caption: "Mostrar o tempo como produto. O que acontece quando uma pessoa se entrega completamente ao lugar.",
+    tags: "#lifestyle #fashion #elegancia #serracatarinense #luxo #ormondimagens",
+    cover: "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A3768.jpg",
+    slides: [
+      "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A3768.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A2401.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A2462.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A2146.jpg",
+      "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A1376.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A1615.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A2392.jpg"
+    ]
+  },
+  {
+    id: 9,
+    theme: "Exclusividade",
+    subtitle: "Cabana · Helicóptero · Privacidade",
+    caption: "Uma cabana suspensa entre araucárias. Um helicóptero ao pôr do sol. Experiências que não se encontram em brochuras.",
+    tags: "#exclusivo #privacidade #cabana #helicoptero #luxo #fazendabomretiro",
+    cover: "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A1771.jpg",
+    slides: [
+      "https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A1771.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A3159.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A1975.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A4050.jpg","https://rodrigoormond-dotcom.github.io/ormond/cases/thera/images/_02A4082.jpg"
+    ]
+  }
+];
+
+// ─── STATE ──────────────────────────────────────────────────
+let currentCarrossel = null;
+let currentSlide = 0;
+
+// ─── BUILD GRID ─────────────────────────────────────────────
+const grid = document.getElementById('grid');
+const legendEl = document.getElementById('legend');
+
+CARROSSEIS.forEach((c, i) => {
+  // Grid cell
+  const cell = document.createElement('div');
+  cell.className = 'grid-cell';
+  cell.innerHTML = `
+    <img src="${c.cover}" alt="${c.theme}" loading="${i < 3 ? 'eager' : 'lazy'}">
+    <div class="grid-overlay">
+      <div class="grid-label">${c.theme}</div>
+      <div class="carousel-badge">${c.slides.length}</div>
+    </div>`;
+  cell.onclick = () => openCarrossel(i);
+  grid.appendChild(cell);
+
+  // Legend item
+  const leg = document.createElement('div');
+  leg.className = 'legend-item';
+  leg.innerHTML = `
+    <div class="n">Carrossel ${c.id} · ${c.slides.length} fotos</div>
+    <div class="title">${c.theme}</div>
+    <div class="photos">${c.slides.join(' · ')}</div>`;
+  leg.onclick = () => openCarrossel(i);
+  legendEl.appendChild(leg);
+});
+
+// ─── OPEN MODAL ─────────────────────────────────────────────
+function openCarrossel(idx) {
+  currentCarrossel = idx;
+  currentSlide = 0;
+  const c = CARROSSEIS[idx];
+
+  // Build slides
+  const wrap = document.getElementById('slideWrap');
+  // Remove old images (keep .slide-theme, .dots, .arrow)
+  wrap.querySelectorAll('img').forEach(el => el.remove());
+  c.slides.forEach((src, i) => {
+    const img = document.createElement('img');
+    img.src = src;
+    img.alt = c.theme;
+    img.className = i === 0 ? 'active' : '';
+    wrap.insertBefore(img, wrap.querySelector('.slide-theme'));
+  });
+
+  // Dots
+  const dots = document.getElementById('dots');
+  dots.innerHTML = c.slides.map((_, i) =>
+    `<div class="dot ${i === 0 ? 'active' : ''}"></div>`
+  ).join('');
+
+  // Caption
+  document.getElementById('captionText').innerHTML = `<strong>ormond</strong>${c.caption}`;
+  document.getElementById('captionTags').textContent = c.tags;
+
+  updateSlideUI();
+  document.getElementById('modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ─── NAVIGATION ─────────────────────────────────────────────
+function updateSlideUI() {
+  const c = CARROSSEIS[currentCarrossel];
+  const imgs = document.querySelectorAll('#slideWrap img');
+  imgs.forEach((img, i) => img.classList.toggle('active', i === currentSlide));
+
+  const dots = document.querySelectorAll('#dots .dot');
+  dots.forEach((d, i) => d.classList.toggle('active', i === currentSlide));
+
+  document.getElementById('slideTag').textContent = c.theme + ' · ' + c.subtitle;
+  document.getElementById('slideCounter').textContent = `${currentSlide + 1} / ${c.slides.length}`;
+  document.getElementById('arrowLeft').classList.toggle('hidden', currentSlide === 0);
+  document.getElementById('arrowRight').classList.toggle('hidden', currentSlide === c.slides.length - 1);
+}
+
+function nextSlide() {
+  const c = CARROSSEIS[currentCarrossel];
+  if (currentSlide < c.slides.length - 1) { currentSlide++; updateSlideUI(); }
+}
+function prevSlide() {
+  if (currentSlide > 0) { currentSlide--; updateSlideUI(); }
+}
+
+// Keyboard nav
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('modal').classList.contains('open')) return;
+  if (e.key === 'ArrowRight') nextSlide();
+  if (e.key === 'ArrowLeft') prevSlide();
+  if (e.key === 'Escape') closeModal();
+});
+
+// Click outside modal
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal')) closeModal();
+});
+
+// Touch swipe
+let touchX = 0;
+document.getElementById('slideWrap').addEventListener('touchstart', e => touchX = e.touches[0].clientX);
+document.getElementById('slideWrap').addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchX;
+  if (dx < -40) nextSlide();
+  if (dx > 40) prevSlide();
+});
+</script>
+</body>
+</html>
