@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Black Friday 2026 · Lista de compras</title>
+<style>
+  :root {
+    --bg: #faf9f7; --panel: #ffffff; --fg: #1f1e1c; --muted: #6b6862; --line: #e6e3de;
+    --ok: #2f7d4f; --warn: #b4600f; --bar: #c96442; --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1c1b19; --panel: #262522; --fg: #ecebe8; --muted: #a29f98; --line: #3a3834; --ok: #6fc28f; --warn: #e8a15a; --bar: #e07a57; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 32px 20px 48px; display: flex; flex-direction: column; gap: 32px; }
+  h1 { font-family: Georgia, "Times New Roman", serif; font-weight: 400; font-size: 32px; margin: 0 0 8px; }
+  h2 { font-size: 18px; font-weight: 600; margin: 0; }
+  .take { margin: 0; max-width: 62ch; }
+  .take b { font-variant-numeric: tabular-nums; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; }
+  .tile .lbl, .tile .cap, .sub, .note { font-size: 13px; color: var(--muted); }
+  .tile .val { font-family: Georgia, "Times New Roman", serif; font-size: 28px; font-variant-numeric: tabular-nums; }
+  .tile .val.good { color: var(--ok); }
+  .sub { margin: 4px 0 14px; }
+  .chart { position: relative; }
+  .row { display: grid; grid-template-columns: 1fr; gap: 3px; margin-bottom: 12px; cursor: default; }
+  .row .name { font-size: 13px; }
+  .row .track { display: flex; align-items: center; gap: 8px; }
+  .row .bar { height: 14px; background: var(--bar); border-radius: 2px; min-width: 2px; }
+  .row .pct { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 6px 20px rgba(0,0,0,.12); border-radius: 8px; padding: 8px 12px; font-size: 13px; white-space: nowrap; z-index: 2; }
+  .tip .s { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; }
+  th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .chk { width: 32px; text-align: center; padding-right: 0; }
+  input[type=checkbox] { width: 17px; height: 17px; cursor: pointer; accent-color: var(--ok); }
+  tr.off td { color: var(--muted); text-decoration: line-through; }
+  tr.off td.chk { text-decoration: none; }
+  td.hit { color: var(--ok); font-weight: 600; }
+  td.wait { color: var(--muted); }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; border: 1px solid var(--line); white-space: nowrap; }
+  .pill.now { color: var(--warn); border-color: var(--warn); }
+  .pill.done { color: var(--ok); border-color: var(--ok); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  button { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  .note { margin: 14px 0 0; max-width: 72ch; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Black Friday 2026 · Lista de compras</h1>
+    <p class="take">Hoje os itens marcados somam <b id="t-hoje-2">—</b>. Se cada item cair até o preço-alvo, sai por <b id="t-alvo-2">—</b> na Black Friday, sexta 27/11.</p>
+  </header>
+
+  <div class="tiles">
+    <div class="tile"><span class="lbl">Total hoje (17/11)</span><span class="val" id="t-hoje">—</span><span class="cap">Menor preço de hoje, só itens marcados</span></div>
+    <div class="tile"><span class="lbl">Total no preço-alvo</span><span class="val" id="t-alvo">—</span><span class="cap">Quanto queremos pagar, só itens marcados</span></div>
+    <div class="tile"><span class="lbl">Economia buscada</span><span class="val good" id="t-eco">—</span><span class="cap">Diferença entre hoje e o alvo</span></div>
+    <div class="tile"><span class="lbl">Itens marcados</span><span class="val" id="t-n">—</span><span class="cap">de <span id="t-total">—</span> na lista. Desmarque o que não vai comprar.</span></div>
+  </div>
+
+  <section>
+    <h2>Quanto cada preço precisa cair para bater o alvo</h2>
+    <p class="sub">Queda necessária em relação ao menor preço de hoje. Passe o mouse para ver os valores.</p>
+    <div class="chart" id="chart"></div>
+  </section>
+
+  <section>
+    <h2>A lista</h2>
+    <p class="sub">Marque ou desmarque cada item: os totais e o gráfico se ajustam. As marcações ficam salvas neste navegador.</p>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th class="chk" aria-label="Na lista">✓</th>
+            <th>Item</th>
+            <th class="num">Hoje</th>
+            <th class="num">Alvo BF</th>
+            <th class="num">Preço BF</th>
+            <th>Status</th>
+            <th>Modelo</th>
+            <th>Onde</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="actions">
+      <button type="button" id="all-on">Marcar todos</button>
+      <button type="button" id="all-off">Desmarcar todos</button>
+    </div>
+    <p class="note">Preços levantados em 17/11/2026 em comparadores e lojas online (Magalu, Amazon, Buscapé, Decathlon, Centauro, WebArCondicionado). Podem variar com frete, CEP e forma de pagamento. Os preços-alvo são estimativas de 10–15% abaixo do valor de hoje. A coluna "Preço BF" é preenchida no dia 27/11.</p>
+  </section>
+</div>
+
+<script>
+  const ITENS = [
+    { item: "Spa inflável ~800L", modelo: "Intex PureSpa Bubble 795L", hoje: 4055.92, onde: "Magalu", alvo: 3600, bf: null, status: "Monitorando" },
+    { item: "Ar-cond. 22k BTU (em conta)", modelo: "Springer Midea AirVolution Connect Inverter", hoje: 3559.00, onde: "Buscapé", alvo: 3200, bf: null, status: "Monitorando" },
+    { item: "Ar-cond. 22k BTU (premium)", modelo: "Samsung WindFree Connect Inverter", hoje: 4399.02, onde: "Buscapé", alvo: 3900, bf: null, status: "Monitorando" },
+    { item: "Coleira Scalibor 65cm", modelo: "Scalibor 25g (cães grandes)", hoje: 44.39, onde: "Amazon", alvo: 40, bf: null, status: "Comprar agora" },
+    { item: "Coleira Scalibor 48cm", modelo: "Scalibor 19g (P/M)", hoje: 61.24, onde: "Buscapé", alvo: 55, bf: null, status: "Monitorando" },
+    { item: "Drontal Plus 35kg", modelo: "2 comprimidos, sabor carne", hoje: 78.96, onde: "Magalu (Pix)", alvo: 72, bf: null, status: "Monitorando" },
+    { item: "Caiaque de pesca", modelo: "Caiaker Marmore Robalo", hoje: 2849.99, onde: "Decathlon", alvo: 2500, bf: null, status: "Monitorando" },
+    { item: "Jaqueta neoprene surf M", modelo: "Rip Curl E-Bomb 1.5mm", hoje: 1099.00, onde: "Centauro", alvo: 900, bf: null, status: "Monitorando" }
+  ];
+
+  const KEY = "bf2026-fora";
+  const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+  const pct = new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 0 });
+
+  let fora = [];
+  try { fora = JSON.parse(localStorage.getItem(KEY) || "[]"); if (!Array.isArray(fora)) fora = []; } catch (e) { fora = []; }
+  const salvar = () => { try { localStorage.setItem(KEY, JSON.stringify(fora)); } catch (e) {} };
+
+  const $ = (id) => document.getElementById(id);
+
+  function render() {
+    const marcados = ITENS.filter((r) => !fora.includes(r.item));
+    const hoje = marcados.reduce((s, r) => s + r.hoje, 0);
+    const alvo = marcados.reduce((s, r) => s + r.alvo, 0);
+    $("t-hoje").textContent = $("t-hoje-2").textContent = brl.format(hoje);
+    $("t-alvo").textContent = $("t-alvo-2").textContent = brl.format(alvo);
+    $("t-eco").textContent = brl.format(hoje - alvo);
+    $("t-n").textContent = marcados.length;
+    $("t-total").textContent = ITENS.length;
+    renderChart(marcados);
+    renderTable();
+  }
+
+  function renderChart(marcados) {
+    const el = $("chart");
+    el.replaceChildren();
+    const rows = marcados.map((r) => ({ ...r, queda: 1 - r.alvo / r.hoje })).sort((a, b) => b.queda - a.queda);
+    if (!rows.length) { el.textContent = "Nenhum item marcado."; return; }
+    const max = Math.max(...rows.map((r) => r.queda));
+    const tip = document.createElement("div");
+    tip.className = "tip"; tip.hidden = true;
+    rows.forEach((r) => {
+      const row = document.createElement("div"); row.className = "row";
+      const name = document.createElement("div"); name.className = "name"; name.textContent = r.item;
+      const track = document.createElement("div"); track.className = "track";
+      const bar = document.createElement("div"); bar.className = "bar";
+      bar.style.width = `calc((100% - 60px) * ${(r.queda / max).toFixed(4)})`;
+      const p = document.createElement("span"); p.className = "pct"; p.textContent = "−" + pct.format(r.queda);
+      track.append(bar, p); row.append(name, track);
+      row.addEventListener("pointermove", (ev) => {
+        tip.replaceChildren();
+        const a = document.createElement("div"); a.textContent = r.item;
+        const b = document.createElement("div"); b.className = "s"; b.textContent = `Hoje ${brl.format(r.hoje)} → alvo ${brl.format(r.alvo)}`;
+        const c = document.createElement("div"); c.className = "s"; c.textContent = `Precisa cair ${pct.format(r.queda)} (${brl.format(r.hoje - r.alvo)})`;
+        tip.append(a, b, c); tip.hidden = false;
+        const box = el.getBoundingClientRect();
+        const x = ev.clientX - box.left, y = ev.clientY - box.top;
+        tip.style.left = Math.max(0, Math.min(x + 12, el.clientWidth - tip.offsetWidth)) + "px";
+        tip.style.top = (y + 14) + "px";
+      });
+      row.addEventListener("pointerleave", () => { tip.hidden = true; });
+      el.appendChild(row);
+    });
+    el.appendChild(tip);
+  }
+
+  function renderTable() {
+    const tb = $("tbody");
+    tb.replaceChildren();
+    ITENS.forEach((r) => {
+      const tr = document.createElement("tr");
+      const off = fora.includes(r.item);
+      if (off) tr.className = "off";
+      const td = (text, cls) => { const c = document.createElement("td"); if (cls) c.className = cls; c.textContent = text; tr.appendChild(c); return c; };
+      const ck = td("", "chk");
+      const box = document.createElement("input");
+      box.type = "checkbox"; box.checked = !off;
+      box.setAttribute("aria-label", "Manter " + r.item + " na lista");
+      box.addEventListener("change", () => {
+        fora = fora.filter((x) => x !== r.item);
+        if (!box.checked) fora.push(r.item);
+        salvar(); render();
+      });
+      ck.appendChild(box);
+      td(r.item);
+      td(brl.format(r.hoje), "num");
+      td(brl.format(r.alvo), "num");
+      if (r.bf == null) td("aguardando", "num wait");
+      else td(brl.format(r.bf), r.bf <= r.alvo ? "num hit" : "num");
+      const st = td("");
+      const pill = document.createElement("span");
+      pill.className = "pill" + (r.status === "Comprar agora" ? " now" : r.status === "Comprado" ? " done" : "");
+      pill.textContent = r.status;
+      st.appendChild(pill);
+      td(r.modelo);
+      td(r.onde);
+      tb.appendChild(tr);
+    });
+  }
+
+  $("all-on").addEventListener("click", () => { fora = []; salvar(); render(); });
+  $("all-off").addEventListener("click", () => { fora = ITENS.map((r) => r.item); salvar(); render(); });
+
+  render();
+</script>
+</body>
+</html>
